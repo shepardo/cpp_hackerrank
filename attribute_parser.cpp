@@ -7,6 +7,9 @@
 #include <ctype>
 using namespace std;
 
+
+class tag;
+
 class tag_parser {
 private:
     const string& _input;
@@ -52,7 +55,7 @@ public:
         int pos_prev = pos;
         string id;
         if (test('<') && (id = parse_id())) {
-            if (test('>'))
+            //if (test('>'))
                 return id;
         }
         pos = pos_prev;
@@ -60,7 +63,7 @@ public:
     }
     bool parse_close_tag(const tag &t) {
         int pos_prev = pos;
-        if (test('/') && test(t.name)) {
+        if (test('<') && test('/') && test(t.name) && test('>')) {
             return true;
         }
         return false;
@@ -69,7 +72,7 @@ public:
     string parse_id() {
         skip_blanks();
         int pos_prev = pos;
-        while (pos < _input.size() && isalpha(_input[pos]) && isdigit(_input[pos])) {
+        while (pos < _input.size() && (isalnum(_input[pos]))) {
             pos++;
         }
         return _input.substr(pos_prev, pos);
@@ -79,8 +82,10 @@ public:
         int pos_prev = pos;
         string attr, value;
         while ((attr = parse_attr()) && (value = parse_value()))
+        {
             t.attrs.push_back(attr);
             t.values.push_back(value);
+        }
     }
 
     string parse_attr() {
@@ -111,13 +116,43 @@ public:
 }
 
 class tag {
-public: 
+public:
+    tag(const string& _name) : name(_name) {
+    }
+
     tag(const tag& src): 
-        name(src.name), attrs(src.attrs) {
+        name(src.name), attrs(src.attrs), values(src.values), children(src.children) {
 
     }
 
     bool query(const string& q, string &value) {
+        int i = 0;
+        while (i < q.size() && isalnum(q[i]))
+            i++;
+        if (i < q.size()) {
+            if (q[i] == '.') {
+                const vector<unique_ptr<tag>>::iterator it;
+                it = children.cbegin();
+                while (it) {
+                    if ((**it).name == q.substr(0, i - 1)) {
+                        const string new_q = q.substr(i + 1);
+                        return (**it).query(new_q, value);
+                    }
+                    ++it;
+                }
+            } else if (q[i] == '~') {
+                const string field = q.substr(i + 1);
+                const vector<string>::iterator it;
+                if ((it = attrs.find(field))) {
+                    value = *it;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
         return false;
     }
 
@@ -128,7 +163,8 @@ public:
 
 
     static tag parse(string &s) {
-
+        tag_parser parser(s);
+        return parse();
     }
 }
 
@@ -144,8 +180,16 @@ int main() {
         s += "\n";
     }
 
+    const tag t = tag.parse(s);
+    string query;
+    string value;
     while (j--) {
-        // TODO queries
+        cin >> query;
+        if (tag.query(query, value)) {
+            cout << value << endl;
+        } else {
+            count << "Not Found!" << endl;
+        }
     }
     
     return 0;
