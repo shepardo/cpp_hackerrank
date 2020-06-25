@@ -4,36 +4,70 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-#include <ctype>
+#include <memory>
+#include <cctype>
 using namespace std;
 
 
+
 class tag;
+string& name(tag &);
+vector<string>& attrs(tag &);
+vector<string>& values(tag &);
+vector<unique_ptr<tag>> children(tag &);
+
+tag* create_tag(const string&);
+//vector<unique_ptr<tag>>& tag::children();
+
+/*
+class tag {
+public:
+  tag(const string& _name);
+  tag(const tag& src);
+  bool query(const string& q, string &value) const;
+  string& name();
+  vector<string>& attrs();
+  vector<string>& values();
+  vector<unique_ptr<tag>> children();
+};*/
+
+/*
+{
+public:
+  tag(const string& _name);
+  tag(const tag& src);
+  bool query(const string& q, string &value) const;
+  string name;
+  vector<string> attrs;
+  vector<string> values;
+  vector<unique_ptr<tag>> children;
+};*/
 
 class tag_parser {
 private:
     const string& _input;
-    int pos = 0;
+    string::size_type pos = 0;
 public:
-    tag_parser(const string& input) : _intput(input) {
+    tag_parser(const string& input) : _input(input) {
 
     }
 
     unique_ptr<tag> parse() {
         if (!test('<')) return NULL;
-        string open_tag = parse_open_tag();
+        const string open_tag = parse_open_tag();
         if (open_tag == "") return NULL;
-        tag t(open_tag);
+        unique_ptr<tag> t(create_tag(open_tag));
         parse_attrs(t);
         if (!test('>')) return NULL;
         unique_ptr<tag> child;
-        while (child = parse()) {
-            tag.children.push_back(child);
+        while ((child = parse())) {
+            children(*t).push_back(child);
         }
         parse_close_tag(t);
+        return t;
     }
 
-    bool test(char c, bool skip_blank = true) {
+    bool test(const char c, bool skip_blank = true) {
         if (skip_blank)
             skip_blanks();
         if (pos < _input.size()) {
@@ -52,18 +86,17 @@ public:
     }
 
     string parse_open_tag() {
-        int pos_prev = pos;
+        string::size_type pos_prev = pos;
         string id;
-        if (test('<') && (id = parse_id())) {
+        if (test('<') && ((id = parse_id()) != "")){
             //if (test('>'))
-                return id;
+            return id;
         }
         pos = pos_prev;
         return "";
     }
-    bool parse_close_tag(const tag &t) {
-        int pos_prev = pos;
-        if (test('<') && test('/') && test(t.name) && test('>')) {
+    bool parse_close_tag(const unique_ptr<tag> &t) {
+        if (test('<') && test('/') && test(name(*t)) && test('>')) {
             return true;
         }
         return false;
@@ -78,21 +111,21 @@ public:
         return _input.substr(pos_prev, pos);
     }
 
-    void parse_attrs(const tag &t) {
-        int pos_prev = pos;
+    void parse_attrs(unique_ptr<tag> &t) {
+        string::size_type pos_prev = pos;
         string attr, value;
-        while ((attr = parse_attr()) && (value = parse_value()))
+        while (((attr = parse_attr()) != "") && ((value = parse_value()) != ""))
         {
-            t.attrs.push_back(attr);
-            t.values.push_back(value);
+            attrs(*t).push_back(attr);
+            values(*t).push_back(value);
         }
     }
 
     string parse_attr() {
         skip_blanks();
-        int pos_prev = pos;
+        string::size_type pos_prev = pos;
         string name;
-        if (test('"') && (name = parse_id()) && test('"') && test('=')) {
+        if (test('"') && ((name = parse_id()) != "") && test('"') && test('=')) {
             return name;
         }
         pos = pos_prev;
@@ -101,40 +134,45 @@ public:
 
     string parse_value() {
         skip_blanks();
-        int pos_prev = pos;
+        string::size_type pos_prev = pos;
         string name;
-        if (test('"') && (name = parse_id()) && test('"'))
+        if (test('"') && ((name = parse_id()) != "") && test('"'))
             return name;
         pos = pos_prev;
         return "";
     }
 
     void skip_blanks() {
-        while (pos < _input.size() && _input[i] == ' ')
+        while (pos < _input.size() && _input[pos] == ' ')
             pos++;
     }
-}
+};
 
 class tag {
 public:
-    tag(const string& _name) : name(_name) {
+    tag(const string& name) : _name(name) {
     }
 
     tag(const tag& src): 
-        name(src.name), attrs(src.attrs), values(src.values), children(src.children) {
+        _name(src._name), _attrs(src._attrs), _values(src._values), _children(src._children) {
 
     }
 
+    //friend tag* create_tag(const string&);
+    friend string& name(tag &);
+    friend vector<string>& attrs(tag &);
+    friend vector<string>& values(tag &);
+    friend vector<unique_ptr<tag>> children(tag &);
+
     bool query(const string& q, string &value) {
-        int i = 0;
+        string::size_type i = 0;
         while (i < q.size() && isalnum(q[i]))
             i++;
         if (i < q.size()) {
             if (q[i] == '.') {
-                const vector<unique_ptr<tag>>::iterator it;
-                it = children.cbegin();
-                while (it) {
-                    if ((**it).name == q.substr(0, i - 1)) {
+                vector<unique_ptr<tag>>::iterator it = _children.begin();
+                while (it != _children.end()) {
+                    if ((**it)._name == q.substr(0, i - 1)) {
                         const string new_q = q.substr(i + 1);
                         return (**it).query(new_q, value);
                     }
@@ -142,8 +180,8 @@ public:
                 }
             } else if (q[i] == '~') {
                 const string field = q.substr(i + 1);
-                const vector<string>::iterator it;
-                if ((it = attrs.find(field))) {
+                vector<string>::iterator it;
+                if ((it = find(_attrs.begin(), _attrs.end(), field)) != _attrs.end()) {
                     value = *it;
                     return true;
                 } else {
@@ -156,18 +194,31 @@ public:
         return false;
     }
 
-    string name;
-    vector<string> attrs;
-    vector<string> values;
-    vector<unique_ptr<tag>> children;
+    string _name;
+    vector<string> _attrs;
+    vector<string> _values;
+    vector<unique_ptr<tag>> _children;
+
+    string& name() { return _name; }
+    vector<string>& attrs() { return _attrs; }
+    vector<string>& values() { return _values; }
+    vector<unique_ptr<tag>> children() { return _children; }
 
 
-    static tag parse(string &s) {
+    static unique_ptr<tag> parse(string &s) {
         tag_parser parser(s);
-        return parse();
+        return parser.parse();
     }
-}
+};
 
+string& name(tag &t) { return t.name(); }
+vector<string>& attrs(tag &t) { return t.attrs(); }
+vector<string>& values(tag &t) { return t.values(); }
+vector<unique_ptr<tag>> children(tag &t) { return t.children(); }
+
+tag* create_tag(const string& name) {
+    return new tag(name);
+}
 
 int main() {
     /* Enter your code here. Read input from STDIN. Print output to STDOUT */  
@@ -180,15 +231,15 @@ int main() {
         s += "\n";
     }
 
-    const tag t = tag.parse(s);
+    const unique_ptr<tag> t = tag::parse(s);
     string query;
     string value;
     while (j--) {
         cin >> query;
-        if (tag.query(query, value)) {
+        if (t->query(query, value)) {
             cout << value << endl;
         } else {
-            count << "Not Found!" << endl;
+            cout << "Not Found!" << endl;
         }
     }
     
