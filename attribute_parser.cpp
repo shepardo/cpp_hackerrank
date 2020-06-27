@@ -70,26 +70,30 @@ public:
     bool test(const char c, bool skip_blank = true) {
         if (skip_blank)
             skip_blanks();
+        string::size_type pos_prev = pos;
         if (pos < _input.size()) {
             if (_input[pos++] == c) return true;
         }
+        pos = pos_prev;
         return false;
     }
 
     bool test(const string& s, bool skip_blank = true) {
         if (skip_blank)
             skip_blanks();
+        string::size_type pos_prev = pos;
         if (_input.substr(pos, s.size()) == s) {
             pos += s.size();
             return true;
         }
+        pos = pos_prev;
         return false;
     }
 
     string parse_open_tag() {
         string::size_type pos_prev = pos;
         string id;
-        if (test('<') && ((id = parse_id()) != "")){
+        if ( ((id = parse_id()) != "")){
             //if (test('>'))
             return id;
         }
@@ -126,7 +130,7 @@ public:
         skip_blanks();
         string::size_type pos_prev = pos;
         string name;
-        if (test('"') && ((name = parse_id()) != "") && test('"') && test('=')) {
+        if (((name = parse_id()) != "") && test('=')) {
             return name;
         }
         pos = pos_prev;
@@ -171,12 +175,14 @@ public:
             i++;
         if (i < q.size()) {
             if (q[i] == '.') {
+                const string field = q.substr(0, i - 1);
+                if (field != _name) return false;
                 vector<shared_ptr<tag>>::iterator it = _children.begin();
                 while (it != _children.end()) {
-                    if ((**it)._name == q.substr(0, i - 1)) {
+                    //if ((**it)._name == q.substr(0, i - 1)) {
                         const string new_q = q.substr(i + 1);
                         return (**it).query(new_q, value);
-                    }
+                    //}
                     ++it;
                 }
             } else if (q[i] == '~') {
@@ -193,6 +199,18 @@ public:
             return false;
         }
         return false;
+    }
+
+    void dump() const {
+        cout << "tag: " << _name << endl;
+        return;
+        cout << "attrs: " << endl;
+        for (int i = 0; i < _attrs.size() && i < _values.size(); i++) {
+            cout << _attrs[i] << "=" << _values[i] << endl;
+        }
+        for (auto it = _children.begin(); it != _children.end(); it++) {
+            (**it).dump();
+        }
     }
 
     string _name;
@@ -233,6 +251,7 @@ int main() {
     }
 
     const shared_ptr<tag> t = tag::parse(s);
+    t->dump();
     string query;
     string value;
     while (j--) {
