@@ -14,7 +14,7 @@ class tag;
 string& name(tag &);
 vector<string>& attrs(tag &);
 vector<string>& values(tag &);
-vector<unique_ptr<tag>> children(tag &);
+vector<shared_ptr<tag>> children(tag &);
 
 tag* create_tag(const string&);
 //vector<unique_ptr<tag>>& tag::children();
@@ -52,14 +52,14 @@ public:
 
     }
 
-    unique_ptr<tag> parse() {
+    shared_ptr<tag> parse() {
         if (!test('<')) return NULL;
         const string open_tag = parse_open_tag();
         if (open_tag == "") return NULL;
-        unique_ptr<tag> t(create_tag(open_tag));
+        shared_ptr<tag> t(create_tag(open_tag));
         parse_attrs(t);
         if (!test('>')) return NULL;
-        unique_ptr<tag> child;
+        shared_ptr<tag> child;
         while ((child = parse())) {
             children(*t).push_back(child);
         }
@@ -83,6 +83,7 @@ public:
             pos += s.size();
             return true;
         }
+        return false;
     }
 
     string parse_open_tag() {
@@ -95,7 +96,7 @@ public:
         pos = pos_prev;
         return "";
     }
-    bool parse_close_tag(const unique_ptr<tag> &t) {
+    bool parse_close_tag(const shared_ptr<tag> &t) {
         if (test('<') && test('/') && test(name(*t)) && test('>')) {
             return true;
         }
@@ -111,7 +112,7 @@ public:
         return _input.substr(pos_prev, pos);
     }
 
-    void parse_attrs(unique_ptr<tag> &t) {
+    void parse_attrs(shared_ptr<tag> &t) {
         string::size_type pos_prev = pos;
         string attr, value;
         while (((attr = parse_attr()) != "") && ((value = parse_value()) != ""))
@@ -162,7 +163,7 @@ public:
     friend string& name(tag &);
     friend vector<string>& attrs(tag &);
     friend vector<string>& values(tag &);
-    friend vector<unique_ptr<tag>> children(tag &);
+    friend vector<shared_ptr<tag>> children(tag &);
 
     bool query(const string& q, string &value) {
         string::size_type i = 0;
@@ -170,7 +171,7 @@ public:
             i++;
         if (i < q.size()) {
             if (q[i] == '.') {
-                vector<unique_ptr<tag>>::iterator it = _children.begin();
+                vector<shared_ptr<tag>>::iterator it = _children.begin();
                 while (it != _children.end()) {
                     if ((**it)._name == q.substr(0, i - 1)) {
                         const string new_q = q.substr(i + 1);
@@ -197,15 +198,15 @@ public:
     string _name;
     vector<string> _attrs;
     vector<string> _values;
-    vector<unique_ptr<tag>> _children;
+    vector<shared_ptr<tag>> _children;
 
     string& name() { return _name; }
     vector<string>& attrs() { return _attrs; }
     vector<string>& values() { return _values; }
-    vector<unique_ptr<tag>> children() { return _children; }
+    vector<shared_ptr<tag>> children() { return _children; }
 
 
-    static unique_ptr<tag> parse(string &s) {
+    static shared_ptr<tag> parse(string &s) {
         tag_parser parser(s);
         return parser.parse();
     }
@@ -214,7 +215,7 @@ public:
 string& name(tag &t) { return t.name(); }
 vector<string>& attrs(tag &t) { return t.attrs(); }
 vector<string>& values(tag &t) { return t.values(); }
-vector<unique_ptr<tag>> children(tag &t) { return t.children(); }
+vector<shared_ptr<tag>> children(tag &t) { return t.children(); }
 
 tag* create_tag(const string& name) {
     return new tag(name);
@@ -231,7 +232,7 @@ int main() {
         s += "\n";
     }
 
-    const unique_ptr<tag> t = tag::parse(s);
+    const shared_ptr<tag> t = tag::parse(s);
     string query;
     string value;
     while (j--) {
