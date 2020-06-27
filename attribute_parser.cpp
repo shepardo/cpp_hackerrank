@@ -14,7 +14,8 @@ class tag;
 string& name(tag &);
 vector<string>& attrs(tag &);
 vector<string>& values(tag &);
-vector<shared_ptr<tag>> children(tag &);
+vector<shared_ptr<tag>>& children(tag &);
+void dump(tag &t);
 
 tag* create_tag(const string&);
 //vector<unique_ptr<tag>>& tag::children();
@@ -53,14 +54,16 @@ public:
     }
 
     shared_ptr<tag> parse() {
-        if (!test('<')) return NULL;
+        if (!test('<')) return nullptr;
         const string open_tag = parse_open_tag();
-        if (open_tag == "") return NULL;
+        if (open_tag == "") return nullptr;
         shared_ptr<tag> t(create_tag(open_tag));
         parse_attrs(t);
-        if (!test('>')) return NULL;
+        if (!test('>')) return nullptr;
         shared_ptr<tag> child;
-        while ((child = parse())) {
+        while ((child = parse()).get() != nullptr) {
+            //cout << "child: ";
+            //dump(*child);
             children(*t).push_back(child);
         }
         parse_close_tag(t);
@@ -109,11 +112,11 @@ public:
 
     string parse_id() {
         skip_blanks();
-        int pos_prev = pos;
+        string::size_type pos_prev = pos;
         while (pos < _input.size() && (isalnum(_input[pos]))) {
             pos++;
         }
-        return _input.substr(pos_prev, pos);
+        return _input.substr(pos_prev, pos - pos_prev);
     }
 
     void parse_attrs(shared_ptr<tag> &t) {
@@ -167,7 +170,8 @@ public:
     friend string& name(tag &);
     friend vector<string>& attrs(tag &);
     friend vector<string>& values(tag &);
-    friend vector<shared_ptr<tag>> children(tag &);
+    friend vector<shared_ptr<tag>>& children(tag &);
+    friend void dump(tag &);
 
     bool query(const string& q, string &value) {
         string::size_type i = 0;
@@ -188,8 +192,8 @@ public:
             } else if (q[i] == '~') {
                 const string field = q.substr(i + 1);
                 vector<string>::iterator it;
-                if ((it = find(_attrs.begin(), _attrs.end(), field)) != _attrs.end()) {
-                    value = *it;
+                if ((it = find(_attrs.begin(), _attrs.end(), field)) != _attrs.end()) {  
+                    value = _values[std::distance(_attrs.begin(), it)];
                     return true;
                 } else {
                     return false;
@@ -203,7 +207,6 @@ public:
 
     void dump() const {
         cout << "tag: " << _name << endl;
-        return;
         cout << "attrs: " << endl;
         for (int i = 0; i < _attrs.size() && i < _values.size(); i++) {
             cout << _attrs[i] << "=" << _values[i] << endl;
@@ -221,10 +224,11 @@ public:
     string& name() { return _name; }
     vector<string>& attrs() { return _attrs; }
     vector<string>& values() { return _values; }
-    vector<shared_ptr<tag>> children() { return _children; }
+    vector<shared_ptr<tag>>& children() { return _children; }
 
 
     static shared_ptr<tag> parse(string &s) {
+        //cout << s << endl;
         tag_parser parser(s);
         return parser.parse();
     }
@@ -233,7 +237,8 @@ public:
 string& name(tag &t) { return t.name(); }
 vector<string>& attrs(tag &t) { return t.attrs(); }
 vector<string>& values(tag &t) { return t.values(); }
-vector<shared_ptr<tag>> children(tag &t) { return t.children(); }
+vector<shared_ptr<tag>>& children(tag &t) { return t.children(); }
+void dump(tag &t) { t.dump(); } 
 
 tag* create_tag(const string& name) {
     return new tag(name);
@@ -244,18 +249,18 @@ int main() {
     int i, j;
     cin >> i >> j;
     string s, line;
+    getline(cin, line);
     while (i--) {
-        cin >> line; 
+        getline(cin, line);
         s += line;
-        s += "\n";
     }
 
     const shared_ptr<tag> t = tag::parse(s);
-    t->dump();
+    //t->dump();
     string query;
     string value;
     while (j--) {
-        cin >> query;
+        getline(cin, query);
         if (t->query(query, value)) {
             cout << value << endl;
         } else {
