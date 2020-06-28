@@ -175,17 +175,23 @@ public:
 
     bool query(const string& q, string &value) {
         string::size_type i = 0;
+        //cout << "query: " << q << endl;
+        //cout << "***** Dump for " << _name << endl;
+        //this->dump();
         while (i < q.size() && isalnum(q[i]))
             i++;
+        const string tag_name = q.substr(0, i);
+        //cout << "tag_name: " << tag_name << endl;
+        if (tag_name != _name) return false;
         if (i < q.size()) {
             if (q[i] == '.') {
-                const string field = q.substr(0, i - 1);
-                if (field != _name) return false;
                 vector<shared_ptr<tag>>::iterator it = _children.begin();
                 while (it != _children.end()) {
                     //if ((**it)._name == q.substr(0, i - 1)) {
-                        const string new_q = q.substr(i + 1);
-                        return (**it).query(new_q, value);
+                    const string new_q = q.substr(i + 1);
+                    if ((**it).query(new_q, value)) {
+                        return true;
+                    }
                     //}
                     ++it;
                 }
