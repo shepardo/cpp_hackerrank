@@ -125,7 +125,9 @@ public:
         while (pos < _input.size() && _input[pos] != '"') {
             pos++;
         }
-        return _input.substr(pos_prev, pos--);
+        //cout << "pos_prev: " << pos_prev << ", pos: " << pos << endl;
+        //cout << _input << endl;
+        return _input.substr(pos_prev, pos - pos_prev);
     }
 
     void parse_attrs(shared_ptr<tag> &t) {
