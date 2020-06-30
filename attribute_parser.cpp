@@ -119,6 +119,15 @@ public:
         return _input.substr(pos_prev, pos - pos_prev);
     }
 
+    string parse_value_attr() {
+        //skip_blanks();
+        int pos_prev = pos;
+        while (pos < _input.size() && _input[pos] != '"') {
+            pos++;
+        }
+        return _input.substr(pos_prev, pos--);
+    }
+
     void parse_attrs(shared_ptr<tag> &t) {
         string::size_type pos_prev = pos;
         string attr, value;
@@ -144,7 +153,7 @@ public:
         skip_blanks();
         string::size_type pos_prev = pos;
         string name;
-        if (test('"') && ((name = parse_id()) != "") && test('"'))
+        if (test('"') && ((name = parse_value_attr()) != "") && test('"'))
             return name;
         pos = pos_prev;
         return "";
