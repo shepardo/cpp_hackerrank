@@ -36,7 +36,16 @@ public:
     int getHeight() { return h; }
     long long CalculateVolume() { return b * h * l; }
     bool operator <(Box &b) {
-        return this->CalculateVolume() < b.CalculateVolume();
+        if (this->l < b.l) return true;
+        else if (this->l < b.l) return false;
+        else {
+            if (this->b < b.b) return true;
+            else if (this->b > b.b) return false;
+            else {
+                if (this->h < b.h) return true;
+                else return false;
+            }
+        } 
     }
     friend ostream& operator<<(ostream& out, Box& b);
 private:
