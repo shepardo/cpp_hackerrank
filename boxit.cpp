@@ -27,13 +27,13 @@ using namespace std;
 class Box {
 public:
     Box() : l(0), b(0), h(0) {}
-    Box(int length, int breadth, int height) : l(length), b(breadth), h(height) {
+    Box(long length, long breadth, long height) : l(length), b(breadth), h(height) {
     }
     Box(const Box& box): l(box.l), b(box.b), h(box.h) {
     }
-    int getLength() { return l; }
-    int getBreadth() { return b; }
-    int getHeight() { return h; }
+    long getLength() { return l; }
+    long getBreadth() { return b; }
+    long getHeight() { return h; }
     long long CalculateVolume() { return b * h * l; }
     bool operator <(Box &b) {
         if (this->l < b.l) return true;
@@ -49,7 +49,7 @@ public:
     }
     friend ostream& operator<<(ostream& out, Box& b);
 private:
-    int l, b, h;
+    long l, b, h;
 };
 
 ostream& operator<<(ostream& out, Box& b) {
